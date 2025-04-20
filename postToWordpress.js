@@ -1,25 +1,25 @@
 import axios from "axios";
-import dotenv from "dotenv";
+import * as dotenv from "dotenv";
 dotenv.config();
 
-export async function postToWordpress({ titulo, contenido, imagenID, categoriaID }) {
-  const auth = Buffer.from(`${process.env.WORDPRESS_USER}:${process.env.WORDPRESS_PASS}`).toString("base64");
+export async function postToWordpress(titulo, contenido, imagenID) {
+  const postBody = {
+    title: titulo,
+    content: contenido,
+    status: "publish",
+    categories: [parseInt(process.env.CATEGORIA_ID)], // ← ahora es integer
+    featured_media: imagenID,
+  };
 
   try {
     const response = await axios.post(
-      "https://mascoticiero.com/wp-json/wp/v2/posts",
-      {
-        title: titulo,
-        content: contenido,
-        status: "publish",
-        categories: [categoriaID],
-        featured_media: imagenID
-      },
+      `${process.env.WORDPRESS_URL}/wp-json/wp/v2/posts`,
+      postBody,
       {
         headers: {
-          "Authorization": `Basic ${auth}`,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+          Authorization: `Basic ${process.env.WORDPRESS_AUTH}`,
+        },
       }
     );
 
