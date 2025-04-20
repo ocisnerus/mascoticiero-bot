@@ -3,42 +3,42 @@ dotenv.config();
 
 import { getNews } from "./gnews.js";
 import { generateImage } from "./generateImage.js";
-import OpenAI from "openai";
+import { postToWordpress } from "./postToWordpress.js";
+import { writeFile } from "fs/promises";
 import axios from "axios";
-import fs from "fs";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API });
+const CATEGORIA_ID = Number(process.env.CATEGORIA_ID);
 
-console.log("🟢 Buscando noticia...");
-const noticia = await getNews();
+async function main() {
+  console.log("🟢 Buscando noticia...");
 
-console.log("✍️ Generando contenido...");
-const completion = await openai.chat.completions.create({
-  model: "gpt-4",
-  messages: [
+  const noticia = await getNews();
+  if (!noticia) {
+    console.error("❌ No se encontró ninguna noticia.");
+    return;
+  }
+
+  console.log("✍️ Generando contenido...");
+
+  const prompt = `Redacta una noticia real estilo Mascoticiero en español de México basada en este titular: "${noticia.title}" con mínimo 500 palabras, estilo natural y SEO monstruoso. Incluye menciones a Firulais, Gurrumino, Oscar Cisneros y el sitio Mascoticiero sin exagerar. Separa en párrafos.`;
+
+  const gptResponse = await axios.post(
+    "https://api.openai.com/v1/chat/completions",
     {
-      role: "system",
-      content: "Eres un redactor mexicano que escribe con estilo natural y amigable para un blog llamado Mascoticiero. Tu contenido debe ser 100% original, largo (+500 palabras), divertido y con enfoque SEO monstruoso. Incluye de forma natural menciones a Firulais, Gurrumino, Oscar Cisneros y Mascoticiero. Termina con una llamada a seguirnos en redes sociales. Usa H1 con emojis, subtítulos con H2 y separa en bloques legibles. Evita parecer robot.",
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.8,
     },
     {
-      role: "user",
-      content: `Redacta una noticia basada en este titular: "${noticia.title}" y este resumen: "${noticia.description}".`,
-    },
-  ],
-  temperature: 0.8,
-});
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
 
-const contenido = completion.choices[0].message.content;
+  const contenido = gptResponse.data.choices[0].message.content;
 
-console.log("🖼️ Generando imagen...");
-const promptImagen = `Una imagen realista horizontal relacionada con: ${noticia.title}`;
-const image = await generateImage(promptImagen);
+  console.log("🖼️ Generando imagen...");
 
-// Guardar la imagen
-const imagePath = "./output.webp";
-const imageResponse = await axios.get(image, {
-  responseType: "arraybuffer",
-});
-fs.writeFileSync(imagePath, imageResponse.data);
-
-console.log("✅ Todo listo. Contenido y imagen generados.");
+  const imagePrompt = `Una imagen horizontal realista,
