@@ -12,15 +12,14 @@ export async function generateImage(prompt) {
       model: "dall-e-3",
       prompt,
       n: 1,
-      size: "1024x1024",
+      size: "1200x628",
       response_format: "url",
     });
 
-    const imageUrl = response.data[0].url;
-    console.log("🖼️ Image generated:", imageUrl);
+    const imageUrl = response.data.data[0].url;
     return imageUrl;
   } catch (error) {
-    console.error("❌ Error generating image:", error.message);
+    console.error("❌ Error al generar la imagen:", error.message);
     throw error;
   }
 }
