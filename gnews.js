@@ -1,26 +1,22 @@
-import fetch from "node-fetch";
+import axios from "axios";
 import * as dotenv from "dotenv";
 dotenv.config();
 
 export async function getNews() {
-  const GNEWS_API_KEY = process.env.GNEWS_API_KEY;
-  const url = `https://gnews.io/api/v4/search?q=animals&lang=es&max=1&sortby=relevance&token=${GNEWS_API_KEY}`;
-
   try {
-    const response = await fetch(url);
-    const data = await response.json();
+    const response = await axios.get(`https://gnews.io/api/v4/search?q=animales&lang=es&max=5&token=${process.env.GNEWS_API_KEY}`);
+    const articles = response.data.articles;
 
-    if (!data.articles || data.articles.length === 0) {
+    if (!articles || articles.length === 0) {
       throw new Error("No news articles found.");
     }
 
-    const article = data.articles[0];
-
+    const first = articles[0];
     return {
-      title: article.title,
-      description: article.description,
-      url: article.url,
-      content: article.content || article.description,
+      title: first.title,
+      description: first.description,
+      url: first.url,
+      content: first.content,
     };
   } catch (error) {
     console.error("❌ Error fetching news:", error.message);
