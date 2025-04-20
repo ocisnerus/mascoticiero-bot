@@ -2,51 +2,47 @@ import axios from "axios";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-// ✅ SUBIR IMAGEN A WORDPRESS
-export async function uploadImageToWordpress(imageBuffer, filename = "imagen.webp") {
+export async function postToWordpress({ title, content, imageUrl }) {
   try {
-    const response = await axios.post(
-      `${process.env.WORDPRESS_URL}/wp-json/wp/v2/media`,
-      imageBuffer,
-      {
-        headers: {
-          "Content-Disposition": `attachment; filename="${filename}"`,
-          "Content-Type": "image/webp",
-          Authorization: `Basic ${Buffer.from(`${process.env.WORDPRESS_USER}:${process.env.WORDPRESS_PASS}`).toString("base64")}`,
-        },
-      }
-    );
-    console.log("🖼️ Imagen subida. ID:", response.data.id);
-    return response.data.id;
-  } catch (error) {
-    console.error("❌ Error al subir la imagen a WordPress:", error.response?.data || error.message);
-    throw error;
-  }
-}
+    // Upload the image
+    const imageResponse = await axios({
+      method: "post",
+      url: `${process.env.WP_URL}/wp-json/wp/v2/media`,
+      headers: {
+        "Content-Disposition": `attachment; filename=mascoticiero-image.webp`,
+        "Content-Type": "image/webp",
+        Authorization: `Basic ${Buffer.from(
+          `${process.env.WP_USER}:${process.env.WP_APP_PASSWORD}`
+        ).toString("base64")}`,
+      },
+      data: await (await fetch(imageUrl)).arrayBuffer(),
+    });
 
-// ✅ PUBLICAR POST EN WORDPRESS
-export async function postToWordpress({ title, content, mediaId, categoryId }) {
-  try {
-    const response = await axios.post(
-      `${process.env.WORDPRESS_URL}/wp-json/wp/v2/posts`,
-      {
+    const featuredMediaId = imageResponse.data.id;
+
+    // Post the article
+    const postResponse = await axios({
+      method: "post",
+      url: `${process.env.WP_URL}/wp-json/wp/v2/posts`,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${Buffer.from(
+          `${process.env.WP_USER}:${process.env.WP_APP_PASSWORD}`
+        ).toString("base64")}`,
+      },
+      data: {
         title,
         content,
         status: "publish",
-        categories: [categoryId],
-        featured_media: mediaId,
+        categories: [parseInt(process.env.CATEGORY_ID)],
+        featured_media: featuredMediaId,
       },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Basic ${Buffer.from(`${process.env.WORDPRESS_USER}:${process.env.WORDPRESS_PASS}`).toString("base64")}`,
-        },
-      }
-    );
-    console.log("✅ Post publicado en WordPress:", response.data.link);
-    return response.data;
+    });
+
+    console.log("✅ Post published:", postResponse.data.link);
+    return postResponse.data.link;
   } catch (error) {
-    console.error("❌ Error al publicar en WordPress:", error.response?.data || error.message);
+    console.error("❌ Error publishing to WordPress:", error.response?.data || error.message);
     throw error;
   }
 }
