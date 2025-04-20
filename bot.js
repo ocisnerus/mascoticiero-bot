@@ -41,4 +41,37 @@ async function main() {
 
   console.log("🖼️ Generando imagen...");
 
-  const imagePrompt = `Una imagen horizontal realista,
+  const imagePrompt = `Una imagen horizontal realista, de estilo fotográfico, sobre: ${noticia.title}, relacionada con el mundo animal.`;
+  const imageUrl = await generateImage(imagePrompt);
+
+  const imageData = await axios.get(imageUrl, { responseType: "arraybuffer" });
+  const imageBuffer = Buffer.from(imageData.data, "binary");
+  await writeFile("imagen.webp", imageBuffer);
+
+  const mediaRes = await axios.post(
+    "https://mascoticiero.com/wp-json/wp/v2/media",
+    imageBuffer,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${process.env.WORDPRESS_USER}:${process.env.WORDPRESS_PASS}`).toString("base64")}`,
+        "Content-Disposition": `attachment; filename=mascoticiero-${Date.now()}.webp`,
+        "Content-Type": "image/webp",
+      },
+    }
+  );
+
+  const imagenId = mediaRes.data.id;
+
+  console.log("🚀 Publicando en WordPress...");
+
+  await postToWordpress({
+    titulo: noticia.title,
+    contenido,
+    imagenId,
+    categoriaId: CATEGORIA_ID,
+  });
+
+  console.log("✅ Todo listo. Contenido e imagen generados y publicados.");
+}
+
+main();
