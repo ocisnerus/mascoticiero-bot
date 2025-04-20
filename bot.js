@@ -1,39 +1,37 @@
 import { getNews } from "./gnews.js";
 import { generateContent } from "./gpt.js";
 import { generateImage } from "./generateImage.js";
-import { postToWordpress, uploadImageToWordpress } from "./postToWordpress.js";
-import axios from "axios";
+import { uploadImageToWordPress } from "./uploadImage.js";
+import { postToWordPress } from "./postToWordpress.js";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-console.log("🟢 Buscando noticia...");
-const noticia = await getNews();
+async function runBot() {
+  try {
+    console.log("🟢 Buscando noticia...");
+    const news = await getNews();
 
-console.log("✍️ Generando contenido...");
-const contenido = await generateContent(noticia);
+    console.log("✍️ Generando contenido...");
+    const { title, content, seoTitle, excerpt } = await generateContent(news);
 
-console.log("🖼️ Generando imagen...");
-const imageUrl = await generateImage(noticia.title);
+    console.log("🖼️ Generando imagen...");
+    const imageUrl = await generateImage(title);
 
-// Descargar imagen
-console.log("⬇️ Descargando imagen...");
-const imageResponse = await axios.get(imageUrl, {
-  responseType: "arraybuffer",
-  headers: { "Accept": "image/webp" }
-});
-const imageBuffer = Buffer.from(imageResponse.data, "binary");
+    console.log("☁️ Subiendo imagen a WordPress...");
+    const imageId = await uploadImageToWordPress(imageUrl);
 
-// Subir imagen y obtener ID
-console.log("📤 Subiendo imagen a WordPress...");
-const imageId = await uploadImageToWordpress(imageBuffer, "imagen-generada.webp");
+    console.log("📦 Enviando a WordPress...");
+    await postToWordPress({
+      title: seoTitle,
+      content,
+      imageId,
+      excerpt,
+    });
 
-// Publicar post con imagen
-console.log("📦 Enviando a WordPress...");
-await postToWordpress({
-  title: noticia.title,
-  content: contenido,
-  mediaId: imageId,
-  categoryId: parseInt(process.env.CATEGORIA_ID), // asegúrate que sea número
-});
+    console.log("✅ Publicación completa.");
+  } catch (error) {
+    console.error("❌ Error general:", error.message);
+  }
+}
 
-console.log("✅ Todo publicado con éxito.");
+runBot();
