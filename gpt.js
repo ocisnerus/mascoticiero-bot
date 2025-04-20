@@ -1,42 +1,55 @@
-import { Configuration, OpenAIApi } from "openai";
-import dotenv from "dotenv";
+import OpenAI from "openai";
+import * as dotenv from "dotenv";
 dotenv.config();
 
-const configuration = new Configuration({
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const openai = new OpenAIApi(configuration);
-
-export async function generarContenido(titulo, descripcion) {
+export async function generarContenido(noticia) {
   const prompt = `
-Redacta una noticia viral en español mexicano con estilo humano, natural y optimizado para SEO monstruoso. 
-Debe estar basada en este título: "${titulo}" y esta descripción: "${descripcion}".
+Redacta una noticia para el sitio web Mascoticiero.com en español de México 🇲🇽. Usa estilo humano y natural, tono amigable, lenguaje claro y fácil de leer. 
 
-Requisitos:
-- Mínimo 500 palabras reales.
-- Usa un H1 llamativo con emojis.
-- Incluye subtítulos H2 que dividan el contenido en bloques claros.
-- Usa emojis de forma natural, nunca forzados.
-- Inserta un bloque visible al principio que diga: 🕒 Tiempo estimado de lectura: X minutos (calcula con base en cantidad de palabras).
-- Inserta menciones naturales a Oscar Cisneros, Mascoticiero, Firulais y Gurrumino, sin exagerar.
-- Incluye enlaces internos reales como:
-  - https://mascoticiero.com/category/noticias-de-animales
-  - https://mascoticiero.com/category/perros
-  - https://mascoticiero.com/category/gatos
-- No uses frases robóticas. Hazlo estilo real, fluido, como si fuera redactado por un periodista humano.
-- NO digas "en este artículo te contaremos…" ni nada genérico.
-- No repitas ideas ni hagas relleno.
-- Asegúrate de cerrar con una reflexión simple o dato curioso animal.
+✅ Estructura:
+- Título con emoji en H1
+- Introducción con gancho emocional
+- Subtítulos H2 con emojis
+- Párrafos cortos y ordenados como bloques (tipo Gutenberg)
+- Incluye una mención natural a Firulais, Gurrumino, Kiko o Perico
+- Menciona "Oscar Cisneros" y "Mascoticiero"
+- Añade enlaces internos como: 
+  /category/noticias-de-animales, 
+  /category/perros, 
+  /category/gatos, 
+  /category/mascotas-asombrosas
+- Que tenga al menos 500 palabras reales
+- Incluye una sección de "Comparte esta noticia" al final con CTA para redes sociales
+- Agrega una línea final con "Tiempo estimado de lectura: X minutos"
+- Usa emojis naturales 🐾 en títulos o donde encaje
 
-Devuelve solo el contenido HTML, sin explicaciones. Empieza directo con el bloque del tiempo estimado de lectura.
+📌 Tema base de la noticia:
+"${noticia}"
+
+🎯 Recuerda: SEO monstruoso, natural, nada de tono robótico.
+
+Genera solo el HTML listo para publicar en WordPress, sin explicaciones.
 `;
 
-  const response = await openai.createChatCompletion({
-    model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.7,
-  });
+  try {
+    const respuesta = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      temperature: 0.7,
+    });
 
-  return response.data.choices[0].message.content.trim();
+    return respuesta.choices[0].message.content;
+  } catch (error) {
+    console.error("❌ Error al generar contenido con GPT:", error.message);
+    throw error;
+  }
 }
