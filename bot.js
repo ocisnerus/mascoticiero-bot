@@ -1,37 +1,32 @@
 import { getNews } from "./gnews.js";
 import { generateContent } from "./gpt.js";
+import { generateImagePrompt } from "./generateImagePrompt.js";
 import { generateImage } from "./generateImage.js";
-import { uploadImageToWordPress } from "./uploadImage.js";
 import { postToWordPress } from "./postToWordpress.js";
-import * as dotenv from "dotenv";
-dotenv.config();
 
-async function runBot() {
-  try {
-    console.log("🟢 Buscando noticia...");
-    const news = await getNews();
+console.log("🟢 Buscando noticia...");
 
-    console.log("✍️ Generando contenido...");
-    const { title, content, seoTitle, excerpt } = await generateContent(news);
+try {
+  const news = await getNews();
+  if (!news) throw new Error("No se encontró ninguna noticia válida.");
 
-    console.log("🖼️ Generando imagen...");
-    const imageUrl = await generateImage(title);
-
-    console.log("☁️ Subiendo imagen a WordPress...");
-    const imageId = await uploadImageToWordPress(imageUrl);
-
-    console.log("📦 Enviando a WordPress...");
-    await postToWordPress({
-      title: seoTitle,
-      content,
-      imageId,
-      excerpt,
-    });
-
-    console.log("✅ Publicación completa.");
-  } catch (error) {
-    console.error("❌ Error general:", error.message);
+  console.log("✍️ Generando contenido...");
+  const content = await generateContent(news);
+  if (!content || !content.title || !content.body) {
+    throw new Error("El contenido generado está incompleto.");
   }
-}
 
-runBot();
+  console.log("🖼️ Generando imagen...");
+  const imagePrompt = await generateImagePrompt(content.body);
+  console.log("🎯 Prompt para imagen:", imagePrompt);
+
+  const imageUrl = await generateImage(imagePrompt);
+  console.log("🌄 Imagen generada:", imageUrl);
+
+  console.log("📦 Enviando a WordPress...");
+  await postToWordPress(content.title, content.body, imageUrl);
+
+  console.log("✅ Publicación exitosa.");
+} catch (error) {
+  console.error("❌ Error general:", error.message);
+}
