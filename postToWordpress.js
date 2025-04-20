@@ -1,42 +1,57 @@
 import axios from "axios";
-import FormData from "form-data";
+import * as dotenv from "dotenv";
+dotenv.config();
 
 export async function postToWordPress(title, content, imageUrl) {
-  const siteUrl = process.env.WP_SITE; // SIN SLASH FINAL
+  const siteUrl = process.env.WP_SITE;
   const username = process.env.WP_USERNAME;
   const appPassword = process.env.WP_APP_PASS;
-  const categoryId = parseInt(process.env.CATEGORIA_ID); // DEBE SER INT
+  const categoryId = parseInt(process.env.CATEGORIA_ID);
+
+  const token = Buffer.from(`${username}:${appPassword}`).toString("base64");
 
   try {
-    console.log("🧠 Descargando imagen desde DALL·E...");
+    // Descargar imagen desde URL
     const imageResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
 
-    const imageBuffer = imageResponse.data;
-    const imageName = `mascoticiero-${Date.now()}.webp`;
+    const fileName = `mascoticiero-${Date.now()}.webp`;
 
-    const form = new FormData();
-    form.append("file", imageBuffer, {
-      filename: imageName,
-      contentType: "image/webp",
-    });
-
-    console.log("🔗 URL de media:", `${siteUrl}/wp-json/wp/v2/media`);
-
-    const mediaUpload = await axios.post(
+    const uploadResponse = await axios.post(
       `${siteUrl}/wp-json/wp/v2/media`,
-      form,
+      imageResponse.data,
       {
         headers: {
-          ...form.getHeaders(),
-        },
-        auth: {
-          username,
-          password: appPassword,
+          Authorization: `Basic ${token}`,
+          "Content-Disposition": `attachment; filename="${fileName}"`,
+          "Content-Type": "image/webp",
         },
       }
     );
 
-    const imageId = mediaUpload.data.id;
-    console.log("✅ Imagen subida. ID:", imageId);
+    const imageId = uploadResponse.data.id;
 
-    console.log("
+    console.log("✅ Imagen subida correctamente, ID:", imageId);
+
+    const postResponse = await axios.post(
+      `${siteUrl}/wp-json/wp/v2/posts`,
+      {
+        title,
+        content,
+        status: "publish",
+        categories: [categoryId],
+        featured_media: imageId,
+      },
+      {
+        headers: {
+          Authorization: `Basic ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    console.log("✅ Post publicado en WordPress:", postResponse.data.link);
+  } catch (error) {
+    console.error("❌ Error al publicar en WordPress:", error.response?.data || error.message);
+    throw error;
+  }
+}
