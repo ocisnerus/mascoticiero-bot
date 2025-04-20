@@ -1,77 +1,64 @@
 import dotenv from "dotenv";
-dotenv.config();
-
 import { getNews } from "./gnews.js";
 import { generateImage } from "./generateImage.js";
 import { postToWordpress } from "./postToWordpress.js";
-import { writeFile } from "fs/promises";
-import axios from "axios";
+import OpenAI from "openai";
 
-const CATEGORIA_ID = Number(process.env.CATEGORIA_ID);
+dotenv.config();
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API,
+});
+
+const CATEGORIA_ID = process.env.CATEGORIA_ID;
 
 async function main() {
-  console.log("🟢 Buscando noticia...");
+  try {
+    console.log("🟢 Buscando noticia...");
+    const noticia = await getNews();
 
-  const noticia = await getNews();
-  if (!noticia) {
-    console.error("❌ No se encontró ninguna noticia.");
-    return;
-  }
+    if (!noticia || !noticia.title || !noticia.description) {
+      console.error("❌ No se encontró una noticia válida.");
+      return;
+    }
 
-  console.log("✍️ Generando contenido...");
+    console.log("✍️ Generando contenido...");
 
-  const prompt = `Redacta una noticia real estilo Mascoticiero en español de México basada en este titular: "${noticia.title}" con mínimo 500 palabras, estilo natural y SEO monstruoso. Incluye menciones a Firulais, Gurrumino, Oscar Cisneros y el sitio Mascoticiero sin exagerar. Separa en párrafos.`;
-
-  const gptResponse = await axios.post(
-    "https://api.openai.com/v1/chat/completions",
-    {
+    const gptResponse = await openai.chat.completions.create({
       model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.8,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+      messages: [
+        {
+          role: "system",
+          content: `Eres un redactor profesional para el blog Mascoticiero, escribe en español mexicano, estilo humano, con mínimo 500 palabras, y con estructura SEO monstruosa. Usa H1, H2, emojis y bloques legibles. Agrega backlinks internos a categorías como /category/perros, /category/gatos y /category/mascotas-asombrosas cuando sea relevante. Menciona de forma natural nombres como Firulais, Gurrumino, Oscar Cisneros o Kiko de vez en cuando. Termina con un CTA para seguir leyendo más noticias de animales.`,
+        },
+        {
+          role: "user",
+          content: `Título: ${noticia.title}\nResumen: ${noticia.description}`,
+        },
+      ],
+      temperature: 0.7,
+    });
 
-  const contenido = gptResponse.data.choices[0].message.content;
+    const generatedText = gptResponse.choices[0].message.content;
 
-  console.log("🖼️ Generando imagen...");
+    console.log("🖼️ Generando imagen...");
 
-  const imagePrompt = `Una imagen horizontal realista, de estilo fotográfico, sobre: ${noticia.title}, relacionada con el mundo animal.`;
-  const imageUrl = await generateImage(imagePrompt);
+    const imagePrompt = `Fotografía horizontal hiperrealista sobre: ${noticia.title}, animales, estilo profesional, 1200x628`;
+    const imageUrl = await generateImage(imagePrompt);
 
-  const imageData = await axios.get(imageUrl, { responseType: "arraybuffer" });
-  const imageBuffer = Buffer.from(imageData.data, "binary");
-  await writeFile("imagen.webp", imageBuffer);
+    console.log("📦 Enviando a WordPress...");
 
-  const mediaRes = await axios.post(
-    "https://mascoticiero.com/wp-json/wp/v2/media",
-    imageBuffer,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${process.env.WORDPRESS_USER}:${process.env.WORDPRESS_PASS}`).toString("base64")}`,
-        "Content-Disposition": `attachment; filename=mascoticiero-${Date.now()}.webp`,
-        "Content-Type": "image/webp",
-      },
-    }
-  );
+    await postToWordpress({
+      title: noticia.title,
+      content: generatedText,
+      imageUrl: imageUrl,
+      categoryId: CATEGORIA_ID,
+    });
 
-  const imagenId = mediaRes.data.id;
-
-  console.log("🚀 Publicando en WordPress...");
-
-  await postToWordpress({
-    titulo: noticia.title,
-    contenido,
-    imagenId,
-    categoriaId: CATEGORIA_ID,
-  });
-
-  console.log("✅ Todo listo. Contenido e imagen generados y publicados.");
+    console.log("✅ Publicación completa en Mascoticiero.");
+  } catch (error) {
+    console.error("❌ Error:", error.message || error);
+  }
 }
 
 main();
