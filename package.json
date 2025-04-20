@@ -1,6 +1,7 @@
 {
   "name": "mascoticiero-bot",
   "version": "1.0.0",
+  "type": "module",
   "description": "Bot automático para Mascoticiero",
   "main": "bot.js",
   "scripts": {
