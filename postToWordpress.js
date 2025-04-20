@@ -1,23 +1,45 @@
+// postToWordpress.js
 import axios from "axios";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-async function postToWordPress({ title, content, imageId, excerpt }) {
+export async function postToWordPress(title, content, imageUrl) {
   try {
+    // 🔐 Autenticación con usuario y contraseña de aplicación
+    const auth = Buffer.from(`${process.env.WP_USERNAME}:${process.env.WP_APP_PASS}`).toString("base64");
+
+    // 🧠 Subir imagen destacada
+    const imageResponse = await axios.get(imageUrl, { responseType: "arraybuffer" });
+    const imageBuffer = Buffer.from(imageResponse.data, "binary");
+
+    const uploadResponse = await axios.post(
+      `${process.env.WP_SITE}/wp-json/wp/v2/media`,
+      imageBuffer,
+      {
+        headers: {
+          "Authorization": `Basic ${auth}`,
+          "Content-Disposition": 'attachment; filename="imagen.webp"',
+          "Content-Type": "image/webp",
+        },
+      }
+    );
+
+    const mediaId = uploadResponse.data.id;
+
+    // 📝 Publicar el post con imagen destacada
     const response = await axios.post(
-      `${process.env.WORDPRESS_URL}/wp-json/wp/v2/posts`,
+      `${process.env.WP_SITE}/wp-json/wp/v2/posts`,
       {
         title,
         content,
         status: "publish",
-        excerpt,
-        featured_media: imageId,
-        categories: [parseInt(process.env.CATEGORIA_ID)],
+        categories: [parseInt(process.env.CATEGORIA_ID)], // Asegúrate que esto sea un número
+        featured_media: mediaId,
       },
       {
         headers: {
+          "Authorization": `Basic ${auth}`,
           "Content-Type": "application/json",
-          Authorization: `Basic ${process.env.WORDPRESS_AUTH}`,
         },
       }
     );
@@ -28,5 +50,3 @@ async function postToWordPress({ title, content, imageId, excerpt }) {
     throw error;
   }
 }
-
-export { postToWordPress };
