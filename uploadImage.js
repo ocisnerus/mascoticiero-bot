@@ -1,34 +1,29 @@
+import fs from "fs";
 import axios from "axios";
+import FormData from "form-data";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-export async function uploadImageToWordPress(imageUrl) {
-  try {
-    const imageName = `imagen-${Date.now()}.webp`;
+export async function uploadImage(imagePath, title) {
+  const imageData = fs.readFileSync(imagePath);
+  const fileName = `${title.toLowerCase().replace(/[^a-z0-9]/gi, "-")}.webp`;
 
-    const imageResponse = await axios.get(imageUrl, {
-      responseType: "arraybuffer",
-    });
+  const form = new FormData();
+  form.append("file", imageData, {
+    filename: fileName,
+    contentType: "image/webp",
+  });
 
-    const uploadResponse = await axios.post(
-      `${process.env.WP_URL}/wp-json/wp/v2/media`,
-      imageResponse.data,
-      {
-        headers: {
-          "Content-Type": "image/webp",
-          "Content-Disposition": `attachment; filename="${imageName}"`,
-          Authorization: `Basic ${Buffer.from(
-            `${process.env.WP_USER}:${process.env.WP_PASSWORD}`
-          ).toString("base64")}`,
-        },
-      }
-    );
+  const response = await axios.post(
+    `${process.env.WP_SITE}/wp-json/wp/v2/media`,
+    form,
+    {
+      headers: {
+        ...form.getHeaders(),
+        Authorization: `Basic ${Buffer.from(`${process.env.WP_USERNAME}:${process.env.WP_APP_PASS}`).toString("base64")}`,
+      },
+    }
+  );
 
-    const imageId = uploadResponse.data.id;
-    console.log("📸 Image uploaded. ID:", imageId);
-    return imageId;
-  } catch (error) {
-    console.error("❌ Error uploading image:", error.message);
-    throw error;
-  }
+  return response.data.id;
 }
