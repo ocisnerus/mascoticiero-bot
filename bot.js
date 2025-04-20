@@ -1,6 +1,8 @@
 import { getNews } from "./gnews.js";
 import { generateContent } from "./gpt.js";
 import { generateImage } from "./generateImage.js";
+import { downloadImage } from "./downloadImage.js";
+import { uploadImage } from "./uploadImage.js";
 import { postToWordPress } from "./postToWordpress.js";
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -21,12 +23,18 @@ dotenv.config();
     const imagePrompt = `noticia sobre: ${title}. estilo hiperrealista, horizontal, bien iluminada, imagen de alta calidad para blog de mascotas`;
     const imageUrl = await generateImage(imagePrompt);
 
-    console.log("🧠 Subiendo imagen a WordPress...");
+    console.log("⬇️ Descargando imagen...");
+    const imagePath = await downloadImage(imageUrl);
+
+    console.log("⬆️ Subiendo imagen a WordPress...");
+    const mediaId = await uploadImage(imagePath, title);
+
+    console.log("🧠 Publicando entrada en WordPress...");
     const postResponse = await postToWordPress({
       title,
       content: contenido,
-      imageUrl,
-      categoryId: 4, // Noticias de Animales
+      featuredMedia: mediaId,
+      categoryId: parseInt(process.env.CATEGORIA_ID),
     });
 
     if (postResponse) {
