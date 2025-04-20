@@ -1,3 +1,5 @@
+// generateImage.js
+
 import OpenAI from "openai";
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -12,11 +14,12 @@ export async function generateImage(prompt) {
       model: "dall-e-3",
       prompt,
       n: 1,
-      size: "1200x628",
+      size: "1792x1024", // ✅ tamaño válido para horizontal
       response_format: "url",
     });
 
-    const imageUrl = response.data.data[0].url;
+    const imageUrl = response.data[0].url;
+    console.log("🖼️ Image generated:", imageUrl);
     return imageUrl;
   } catch (error) {
     console.error("❌ Error al generar la imagen:", error.message);
