@@ -2,34 +2,53 @@ import OpenAI from "openai";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function generateContent(news) {
   const prompt = `
-Redacta una publicación estilo Mascoticiero con estas condiciones:
+Redacta una noticia real con estilo humano, natural, mexicano, divertida y legible, como si fuera escrita en bloques de Gutenberg. 
 
-- Escribe en español mexicano 🇲🇽.
-- Mínimo 500 palabras reales.
-- Estilo humano, natural, amigable.
-- Separa por bloques como si fuera Gutenberg.
-- Usa títulos H1 y H2.
-- Incluye un bloque de tiempo estimado de lectura.
-- Usa emojis en subtítulos y párrafos de forma natural.
-- Agrega backlinks internos a https://mascoticiero.com/category/noticias-de-animales, https://mascoticiero.com/category/mascotas-asombrosas y otras URLs del sitio que encajen.
-- Menciona a Oscar Cisneros, Firulais, Gurrumino o Kiko como parte de la narrativa si aplica.
-- Cierra con un CTA que invite a seguir a Mascoticiero en redes sociales (Facebook, Instagram, X y YouTube).
-- Haz SEO monstruoso.
+✅ Estructura:
+- Comienza con un H1 llamativo que incluya emojis y palabras clave.
+- Agrega un párrafo inicial con gancho emocional o curioso.
+- Usa subtítulos H2 para dividir el contenido en secciones claras.
+- Añade emojis de forma natural en el texto.
+- Incluye menciones ocasionales a “Oscar Cisneros”, “Firulais”, “Gurrumino” y “Kiko”, como si fueran parte del equipo del sitio (sin exagerar).
+- Al final, incluye la frase: “El Mascoticiero con Oscar Cisneros, el noticiero del reino animal”.
+- Añade también un bloque con tiempo de lectura estimado como: “⏱️ Tiempo estimado de lectura: 3 minutos”.
+- Termina con un CTA que diga:
 
-Resumen de la noticia: ${news}
+“🐾 Síguenos en nuestras redes sociales para más noticias del reino animal”
+Facebook: https://facebook.com/mascoticiero
+Instagram: https://instagram.com/mascoticiero
+YouTube: https://youtube.com/oscarcisneros
+X (Twitter): https://x.com/mascoticiero
 
-Devuélvelo en formato HTML limpio, sin CSS, listo para pegar en WordPress.
-  `;
+🔗 SEO monstruoso:
+- Incluye al menos 2 backlinks internos del sitio (por ejemplo: /category/noticias-de-animales y /perro-salva-familia-incendio).
+- Incluye 1 backlink externo real a una fuente confiable de noticias si aplica.
+- Usa lenguaje SEO optimizado con palabras clave.
+- Evita repeticiones forzadas o redacción de robot.
+- Siempre debe tener mínimo 500 palabras reales.
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
-    temperature: 0.7,
-  });
+Recuerda: debe parecer escrito por un humano, estilo blog moderno y legible para lectores curiosos.
 
-  return response.choices[0].message.content;
+📰 Noticia original:
+${news}
+`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.8,
+    });
+
+    return response.choices[0].message.content.trim();
+  } catch (error) {
+    console.error("❌ Error al generar el contenido:", error.message);
+    throw error;
+  }
 }
