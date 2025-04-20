@@ -10,15 +10,17 @@ export async function generateImage(prompt) {
   try {
     const response = await openai.images.generate({
       model: "dall-e-3",
-      prompt: `${prompt}. Imagen horizontal, realista, fondo natural.`,
+      prompt,
       n: 1,
       size: "1024x1024",
       response_format: "url",
     });
 
-    return response.data[0].url;
+    const imageUrl = response.data[0].url;
+    console.log("🖼️ Image generated:", imageUrl);
+    return imageUrl;
   } catch (error) {
-    console.error("❌ Error al generar la imagen:", error.message);
+    console.error("❌ Error generating image:", error.message);
     throw error;
   }
 }
